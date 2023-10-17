@@ -1,9 +1,7 @@
 import os
 
 import dj_database_url
-
 from environs import Env
-
 
 env = Env()
 env.read_env()
@@ -27,6 +25,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'debug_toolbar',
+    'phonenumber_field',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -122,3 +122,5 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "assets"),
     os.path.join(BASE_DIR, "bundles"),
 ]
+
+PHONENUMBER_DEFAULT_REGION = 'RU'
