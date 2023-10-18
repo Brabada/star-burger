@@ -1,6 +1,7 @@
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.templatetags.static import static
+from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
@@ -63,6 +64,21 @@ def product_list_api(request):
 def register_order(request):
     order_form = request.data
     dumped_products = []
+
+    # products key validation
+    content = ''
+    if 'products' in order_form:
+        if isinstance(order_form['products'], list):
+            if not order_form['products']:
+                content = {'error': 'products is empty'}
+        else:
+            content = {'error': 'products key contains null or not a list type'}
+    else:
+        content = {'error': 'products key is not represented'}
+
+    if content:
+        return Response(content, status=status.HTTP_400_BAD_REQUEST)
+
     for product in order_form['products']:
         product_id = product['product']
         fetched_product = get_object_or_404(Product, id=product_id)
