@@ -1,11 +1,14 @@
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
+from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned, ValidationError
 from django.templatetags.static import static
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from phonenumber_field.validators import validate_international_phonenumber
+
 from .models import Product, Order, OrderItem
+
 
 
 def banners_list_api(request):
@@ -60,28 +63,52 @@ def product_list_api(request):
     })
 
 
+def validate_register_form_field(field_name, field_type, form):
+    content = ''
+    if field_name in form:
+        if isinstance(form[field_name], field_type):
+            if not form[field_name]:
+                content = {'error': f'{field_name} is empty'}
+        else:
+            content = {'error': f'{field_name} key contains null or not a {field_type} type'}
+    else:
+        content = {'error': f'{field_name} key is not represented'}
+    if content:
+        return Response(content, status=status.HTTP_400_BAD_REQUEST)
+    else:
+        return
+
+
 @api_view(['POST'])
 def register_order(request):
     order_form = request.data
     dumped_products = []
 
-    # products key validation
-    content = ''
-    if 'products' in order_form:
-        if isinstance(order_form['products'], list):
-            if not order_form['products']:
-                content = {'error': 'products is empty'}
-        else:
-            content = {'error': 'products key contains null or not a list type'}
-    else:
-        content = {'error': 'products key is not represented'}
+    # validation
+    for field in ('firstname', 'lastname', 'address', 'phonenumber'):
+        response = validate_register_form_field(field, str, order_form)
+        if response:
+            return response
 
-    if content:
-        return Response(content, status=status.HTTP_400_BAD_REQUEST)
+    # additional validation for phonenumber and products
+    try:
+        validate_international_phonenumber(order_form['phonenumber'])
+    except ValidationError:
+        return Response({'error': 'incorrect phonenumber field format'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # products key validation
+    response = validate_register_form_field('products', list, order_form)
+    if response:
+        return response
 
     for product in order_form['products']:
         product_id = product['product']
-        fetched_product = get_object_or_404(Product, id=product_id)
+        try:
+            fetched_product = Product.objects.get(id=product_id)
+        except ObjectDoesNotExist:
+            return Response({'error': 'product key with id not found'}, status=status.HTTP_404_NOT_FOUND)
+        except MultipleObjectsReturned:
+            return Response({'error': 'there is multiple products with received id'}, status=status.HTTP_409_CONFLICT)
         dumped_products.append(
             {
                 'product': fetched_product,
