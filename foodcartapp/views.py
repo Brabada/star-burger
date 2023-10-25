@@ -1,11 +1,10 @@
 from django.http import JsonResponse
-from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned, ValidationError
 from django.templatetags.static import static
-from rest_framework import status
+from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework.serializers import ModelSerializer
 
-from phonenumber_field.validators import validate_international_phonenumber
 
 from .models import Product, Order, OrderItem
 
@@ -63,52 +62,39 @@ def product_list_api(request):
     })
 
 
-def validate_register_form_field(field_name, field_type, form):
-    content = ''
-    if field_name in form:
-        if isinstance(form[field_name], field_type):
-            if not form[field_name]:
-                content = {'error': f'{field_name} is empty'}
-        else:
-            content = {'error': f'{field_name} key contains null or not a {field_type} type'}
-    else:
-        content = {'error': f'{field_name} key is not represented'}
-    if content:
-        return Response(content, status=status.HTTP_400_BAD_REQUEST)
-    else:
-        return
+class OrderItemSerializer(ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = ['product', 'quantity']
+
+
+class OrderSerializer(ModelSerializer):
+    products = OrderItemSerializer(many=True, allow_empty=False)
+
+    class Meta:
+        model = Order
+        fields = ['firstname', 'lastname', 'phonenumber', 'address', 'products']
+
+
+#{"products":
+# [{"product": 2, "quantity": 3}, {"product": 1, "quantity": 3}],
+# "firstname": "Максим",
+# "lastname": "Булкович",
+# "phonenumber": "+79653333333",
+# "address": "Пушкина Колотушкина
+# "}
 
 
 @api_view(['POST'])
 def register_order(request):
-    order_form = request.data
+    serializer = OrderSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
     dumped_products = []
-
-    # validation
-    for field in ('firstname', 'lastname', 'address', 'phonenumber'):
-        response = validate_register_form_field(field, str, order_form)
-        if response:
-            return response
-
-    # additional validation for phonenumber and products
-    try:
-        validate_international_phonenumber(order_form['phonenumber'])
-    except ValidationError:
-        return Response({'error': 'incorrect phonenumber field format'}, status=status.HTTP_400_BAD_REQUEST)
-
-    # products key validation
-    response = validate_register_form_field('products', list, order_form)
-    if response:
-        return response
-
-    for product in order_form['products']:
-        product_id = product['product']
-        try:
-            fetched_product = Product.objects.get(id=product_id)
-        except ObjectDoesNotExist:
-            return Response({'error': 'product key with id not found'}, status=status.HTTP_404_NOT_FOUND)
-        except MultipleObjectsReturned:
-            return Response({'error': 'there is multiple products with received id'}, status=status.HTTP_409_CONFLICT)
+    print(serializer.validated_data)
+    for product in serializer.validated_data['products']:
+        product_id = product['product'].id
+        fetched_product = get_object_or_404(Product, id=product_id)
         dumped_products.append(
             {
                 'product': fetched_product,
@@ -117,12 +103,11 @@ def register_order(request):
         )
 
     order = Order(
-        name=order_form['firstname'],
-        lastname=order_form['lastname'],
-        phonenumber=order_form['phonenumber'],
-        address=order_form['address'],
+        firstname=serializer.validated_data['firstname'],
+        lastname=serializer.validated_data['lastname'],
+        phonenumber=serializer.validated_data['phonenumber'],
+        address=serializer.validated_data['address'],
     )
-
     order.save()
     for product in dumped_products:
         order_item = OrderItem(
@@ -132,4 +117,4 @@ def register_order(request):
         )
         order_item.save()
 
-    return Response({})
+    return Response({'order-id': order.id})
