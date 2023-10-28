@@ -2,6 +2,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.db.models import Sum, F
 from phonenumber_field.modelfields import PhoneNumberField
+from decimal import Decimal
 
 
 class Restaurant(models.Model):
@@ -173,6 +174,14 @@ class OrderItem(models.Model):
         on_delete=models.CASCADE,
         verbose_name='заказ',
         related_name='order_items',
+    )
+
+    price = models.DecimalField(
+        'стоимость позиции',
+        validators=[MinValueValidator(Decimal(0))],
+        default=Decimal(0),
+        max_digits=9,
+        decimal_places=2,
     )
 
     class Meta:
