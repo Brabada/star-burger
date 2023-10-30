@@ -7,6 +7,7 @@ from rest_framework.serializers import ModelSerializer
 
 from .models import Product, Order, OrderItem
 
+from decimal import Decimal
 
 
 def banners_list_api(request):
@@ -86,20 +87,20 @@ class OrderSerializer(ModelSerializer):
 
 @api_view(['POST'])
 def register_order(request):
-    # Deserializing form
+    # Deserializing order form
     serializer = OrderSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
     dumped_products = []
-    print(serializer.validated_data)
     for product in serializer.validated_data['products']:
         product_id = product['product'].id
         fetched_product = get_object_or_404(Product, id=product_id)
-        
+
         dumped_products.append(
             {
                 'product': fetched_product,
                 'quantity': product['quantity'],
+                'price': Decimal(fetched_product.price * product['quantity']),
             }
         )
 
@@ -115,7 +116,7 @@ def register_order(request):
             product=product['product'],
             quantity=product['quantity'],
             order=order,
-            price=product
+            price=product['price'],
         )
         order_item.save()
 
