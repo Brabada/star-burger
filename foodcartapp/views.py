@@ -95,6 +95,7 @@ def register_order(request):
     for product in serializer.validated_data['products']:
         product_id = product['product'].id
         fetched_product = get_object_or_404(Product, id=product_id)
+        
         dumped_products.append(
             {
                 'product': fetched_product,
@@ -114,6 +115,7 @@ def register_order(request):
             product=product['product'],
             quantity=product['quantity'],
             order=order,
+            price=product
         )
         order_item.save()
 
