@@ -1,6 +1,7 @@
 from django.http import JsonResponse
 from django.templatetags.static import static
 from django.shortcuts import get_object_or_404
+from django.db.transaction import atomic
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.serializers import ModelSerializer
@@ -85,12 +86,12 @@ class OrderSerializer(ModelSerializer):
 # "}
 
 
+@atomic()
 @api_view(['POST'])
 def register_order(request):
     # Deserializing order form
     serializer = OrderSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-
     dumped_products = []
     for product in serializer.validated_data['products']:
         product_id = product['product'].id
