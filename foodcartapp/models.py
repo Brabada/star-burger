@@ -1,8 +1,12 @@
+from decimal import Decimal
+
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.db.models import Sum, F
+from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
-from decimal import Decimal
+
+
 
 
 class Restaurant(models.Model):
@@ -163,6 +167,25 @@ class Order(models.Model):
         choices=STATUS_CHOICES,
         default=UNPROCESSED,
         db_index=True,
+    )
+
+    registered_at = models.DateTimeField(
+        'Зарегистрирован',
+        blank=True,
+        default=timezone.now,
+        db_index=True,
+    )
+
+    called_at = models.DateTimeField(
+        'Когда позвонили',
+        null=True,
+        blank=True,
+    )
+
+    delivered_at = models.DateTimeField(
+        'Доставлен',
+        null=True,
+        blank=True,
     )
 
     comment = models.TextField(
