@@ -147,6 +147,24 @@ class Order(models.Model):
     )
     address = models.TextField('адрес доставки', max_length=350)
 
+    UNPROCESSED = 'UNPROCESSED'
+    ASSEMBLY = 'ASSEMBLY'
+    DELIVERY = 'DELIVERY'
+    DONE = 'DONE'
+    STATUS_CHOICES = [
+        (UNPROCESSED, 'Необработанный'),
+        (ASSEMBLY, 'На сборке'),
+        (DELIVERY, 'Доставляется'),
+        (DONE, 'Исполнен'),
+    ]
+    status = models.CharField(
+        'статус заказа',
+        max_length=50,
+        choices=STATUS_CHOICES,
+        default=UNPROCESSED,
+        db_index=True,
+    )
+
     info = OrderQuerySet.as_manager()
 
     class Meta:
