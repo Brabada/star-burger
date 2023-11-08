@@ -169,6 +169,24 @@ class Order(models.Model):
         db_index=True,
     )
 
+    PAID_BY_SITE = 'PAID_BY_SITE'
+    UNPAID_BY_SITE = 'UNPAID_BY_SITE'
+    CASH_ON_DELIVERY = 'CASH_ON_DELIVERY'
+    CASHLESS_ON_DELIVERY = 'CASHLESS_ON_DELIVERY'
+    PAYMENT_CHOICES = [
+        (PAID_BY_SITE, 'Оплачен через сайт'),
+        (UNPAID_BY_SITE, 'Не оплачен через сайт'),
+        (CASH_ON_DELIVERY, 'Наличными при вручении'),
+        (CASHLESS_ON_DELIVERY, 'Электронно при вручении'),
+    ]
+    payment_method = models.CharField(
+        'Способ оплаты',
+        choices=PAYMENT_CHOICES,
+        default=UNPAID_BY_SITE,
+        db_index=True,
+        max_length=50,
+    )
+
     registered_at = models.DateTimeField(
         'Зарегистрирован',
         blank=True,

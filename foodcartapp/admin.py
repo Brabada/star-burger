@@ -23,6 +23,7 @@ class OrderAdmin(admin.ModelAdmin):
         'phonenumber',
         'address',
         'status',
+        'payment_method',
         'registered_at',
         'called_at',
         'delivered_at',
