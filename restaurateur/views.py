@@ -1,14 +1,15 @@
 from django import forms
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 from django.views import View
 from django.urls import reverse_lazy
 from django.contrib.auth.decorators import user_passes_test
+from django.db.models import Prefetch
 
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 
 
-from foodcartapp.models import Product, Restaurant, Order
+from foodcartapp.models import Product, Restaurant, Order, OrderItem, RestaurantMenuItem
 
 
 
@@ -94,8 +95,41 @@ def view_restaurants(request):
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
 
-    orders = Order.info.total_price().order_by('-status').exclude(status=Order.DONE)
+    # prefetch = Prefetch()
+    orders = Order.info.total_price()\
+        .prefetch_related(
+            'order_items__product__menu_items__restaurant',
+        )\
+        .order_by('-status')\
+        .exclude(status=Order.DONE)
+
+    # 1. Order->order_items->all OrderItems for Order
+    # 2. for OrderItem->by product-> gets all RestaurantMenuItem(with availability=True)
+    # 3. RestaurantMenuItem -> Restaurants -> saving Restaurants for each OrderItem
+    # 4. Gets intersection between restaurants sets from OrderItems in Order and saving restaurants if have any
+
+    view_order_items = []
+    for order in orders:
+        view_order_item = {
+            'order_item': order,
+        }
+        order_items = order.order_items.all()
+        order_restaurants = []
+        for order_item in order_items:
+            menu_items = RestaurantMenuItem.objects\
+                .select_related('restaurant')\
+                .filter(product=order_item.product, availability=True)
+            order_restaurants.append({menu_item.restaurant for menu_item in menu_items})
+
+        available_restaurants = set.intersection(*order_restaurants)
+        view_order_item['restaurants'] = available_restaurants
+        # view_order_item['restaurants'] = ""
+        view_order_items.append(view_order_item)
 
     return render(request, template_name='order_items.html', context={
-        'order_items': orders,
+        'order_items': view_order_items,
     })
+
+    # return render(request, template_name='order_items.html', context={
+    #     'order_items': orders,
+    # })

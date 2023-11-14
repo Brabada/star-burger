@@ -7,8 +7,6 @@ from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
 
 
-
-
 class Restaurant(models.Model):
     name = models.CharField(
         'название',
@@ -133,6 +131,7 @@ class RestaurantMenuItem(models.Model):
 class OrderQuerySet(models.QuerySet):
     def total_price(self):
         return self.annotate(order_price=Sum(F('order_items__price')))
+
 
 
 class Order(models.Model):
