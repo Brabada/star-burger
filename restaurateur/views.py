@@ -109,23 +109,22 @@ def view_orders(request):
         view_order_item = {
             'order_item': order,
         }
-        order_items = order.order_items.all()
-        order_restaurants = []
-        for order_item in order_items:
-            menu_items = RestaurantMenuItem.objects\
-                .select_related('restaurant')\
-                .filter(product=order_item.product, availability=True)
-            order_restaurants.append({menu_item.restaurant for menu_item in menu_items})
+        if not order.restaurant:
+            order_items = order.order_items.all()
+            order_restaurants = []
+            for order_item in order_items:
+                menu_items = RestaurantMenuItem.objects\
+                    .select_related('restaurant')\
+                    .filter(product=order_item.product, availability=True)
+                order_restaurants.append({menu_item.restaurant for menu_item in menu_items})
 
-        available_restaurants = set.intersection(*order_restaurants)
-        view_order_item['restaurants'] = available_restaurants
-        # view_order_item['restaurants'] = ""
-        view_order_items.append(view_order_item)
+            available_restaurants = set.intersection(*order_restaurants)
+            view_order_item['restaurants'] = available_restaurants
+            view_order_items.append(view_order_item)
+        else:
+            view_order_items.append(view_order_item)
+        print(order, order.restaurant)
 
     return render(request, template_name='order_items.html', context={
         'order_items': view_order_items,
     })
-
-    # return render(request, template_name='order_items.html', context={
-    #     'order_items': orders,
-    # })

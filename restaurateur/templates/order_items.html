@@ -26,7 +26,6 @@
     </tr>
 
     {% for item in order_items %}
-      <ul>
         <td>{{item.order_item.id}}</td>
         <td>{{item.order_item.get_status_display}}</td>
         <td>{{item.order_item.get_payment_method_display}}</td>
@@ -46,6 +45,8 @@
                   </ul>
                 </p>
             </details>
+          {% elif item.order_item.restaurant  %}
+            Готовится в {{ item.order_item.restaurant }}
           {% else %}
             Не нашлось ресторанов, с таким набором продуктов.
           {% endif %}
