@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
-from django.db.models import Sum, F
+from django.db.models import Sum, F, Case, Value, When
 from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
 
@@ -131,6 +131,15 @@ class RestaurantMenuItem(models.Model):
 class OrderQuerySet(models.QuerySet):
     def total_price(self):
         return self.annotate(order_price=Sum(F('order_items__price')))
+
+    def order_by_priority(self):
+        priority_order = Case(
+            When(status=Order.UNPROCESSED, then=Value(1)),
+            When(status=Order.ASSEMBLY, then=Value(2)),
+            When(status=Order.DELIVERY, then=Value(3)),
+            When(status=Order.DONE, then=Value(4)),
+        )
+        return self.alias(priority_order=priority_order).order_by('priority_order', 'id')
 
 
 

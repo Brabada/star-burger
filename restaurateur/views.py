@@ -1,15 +1,14 @@
 from django import forms
-from django.shortcuts import redirect, render, get_object_or_404
+from django.shortcuts import redirect, render
 from django.views import View
 from django.urls import reverse_lazy
 from django.contrib.auth.decorators import user_passes_test
-from django.db.models import Prefetch
 
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 
 
-from foodcartapp.models import Product, Restaurant, Order, OrderItem, RestaurantMenuItem
+from foodcartapp.models import Product, Restaurant, Order, RestaurantMenuItem
 
 
 
@@ -95,12 +94,9 @@ def view_restaurants(request):
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
 
-    # prefetch = Prefetch()
     orders = Order.info.total_price()\
-        .prefetch_related(
-            'order_items__product__menu_items__restaurant',
-        )\
-        .order_by('-status')\
+        .prefetch_related('order_items__product__menu_items__restaurant')\
+        .order_by_priority()\
         .exclude(status=Order.DONE)
 
     # 1. Order->order_items->all OrderItems for Order
