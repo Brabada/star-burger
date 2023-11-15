@@ -27,7 +27,9 @@ class OrderAdmin(admin.ModelAdmin):
         'registered_at',
         'called_at',
         'delivered_at',
-        'comment',)
+        'comment',
+        'restaurant',
+    )
     inlines = [
         OrderItemInline,
     ]
@@ -45,6 +47,13 @@ class OrderAdmin(admin.ModelAdmin):
         for instance in instances:
             instance.price = instance.quantity * instance.product.price
             instance.save()
+
+    def save_model(self, request, obj, form, change):
+
+        if change:
+            if obj.status == Order.UNPROCESSED and obj.restaurant:
+                obj.status = Order.ASSEMBLY
+        super().save_model(request, obj, form, change)
 
 
 class RestaurantMenuItemInline(admin.TabularInline):

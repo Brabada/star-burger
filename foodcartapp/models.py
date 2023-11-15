@@ -156,7 +156,7 @@ class Order(models.Model):
     DONE = 'DONE'
     STATUS_CHOICES = [
         (UNPROCESSED, 'Необработанный'),
-        (ASSEMBLY, 'На сборке'),
+        (ASSEMBLY, 'Готовится'),
         (DELIVERY, 'Доставляется'),
         (DONE, 'Исполнен'),
     ]
@@ -175,8 +175,8 @@ class Order(models.Model):
     PAYMENT_CHOICES = [
         (PAID_BY_SITE, 'Оплачен через сайт'),
         (UNPAID_BY_SITE, 'Не оплачен через сайт'),
-        (CASH_ON_DELIVERY, 'Наличными при вручении'),
-        (CASHLESS_ON_DELIVERY, 'Электронно при вручении'),
+        (CASH_ON_DELIVERY, 'Наличными при получении'),
+        (CASHLESS_ON_DELIVERY, 'Электронно при получении'),
     ]
     payment_method = models.CharField(
         'Способ оплаты',
@@ -208,6 +208,15 @@ class Order(models.Model):
     comment = models.TextField(
         'Комментарий к заказу',
         blank=True,
+    )
+
+    restaurant = models.ForeignKey(
+        Restaurant,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='orders',
+        verbose_name='Ресторан для готовки заказа',
     )
 
     info = OrderQuerySet.as_manager()
