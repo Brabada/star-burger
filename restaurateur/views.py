@@ -9,7 +9,9 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 
 import requests
+from decimal import Decimal
 from geopy import distance
+
 
 
 from foodcartapp.models import Product, Restaurant, Order, RestaurantMenuItem
@@ -155,6 +157,8 @@ def view_orders(request):
                         distance.lonlat(*client_coordinates),
                         distance.lonlat(*restaurant_coordinates)).km
                     print(f'Distance to client {order.address} from resto {restaurant.address}: {distance_to_client}')
+                    if distance_to_client:
+                        distance_to_client = round(Decimal(distance_to_client), 3)
                 restaurants.append(
                     {
                         'restaurant': restaurant,
