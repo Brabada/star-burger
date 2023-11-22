@@ -40,7 +40,11 @@
                 <p>
                   <ul>
                     {% for restaurant in item.restaurants %}
-                      <li>{{ restaurant }}</li>
+                      {% if restaurant.distance %}
+                        <li>{{ restaurant.restaurant }}: {{ restaurant.distance }} км.;</li>
+                      {% else %}
+                        <li>{{ restaurant.restaurant }}: Ошибка определения координат</li>
+                      {% endif %}
                     {% endfor %}
                   </ul>
                 </p>

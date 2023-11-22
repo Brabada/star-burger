@@ -4,8 +4,12 @@ from django.views import View
 from django.urls import reverse_lazy
 from django.contrib.auth.decorators import user_passes_test
 
+from django.conf import settings
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
+
+import requests
+from geopy import distance
 
 
 from foodcartapp.models import Product, Restaurant, Order, RestaurantMenuItem
@@ -91,6 +95,24 @@ def view_restaurants(request):
     })
 
 
+def fetch_coordinates(apikey, address):
+    base_url = "https://geocode-maps.yandex.ru/1.x"
+    response = requests.get(base_url, params={
+        "geocode": address,
+        "apikey": apikey,
+        "format": "json",
+    })
+    response.raise_for_status()
+    found_places = response.json()['response']['GeoObjectCollection']['featureMember']
+
+    if not found_places:
+        return None
+
+    most_relevant = found_places[0]
+    lon, lat = most_relevant['GeoObject']['Point']['pos'].split(" ")
+    return lon, lat
+
+
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
 
@@ -109,6 +131,8 @@ def view_orders(request):
         view_order_item = {
             'order_item': order,
         }
+
+        # only for order without selected restaurant
         if not order.restaurant:
             order_items = order.order_items.all()
             order_restaurants = []
@@ -117,13 +141,30 @@ def view_orders(request):
                     .select_related('restaurant')\
                     .filter(product=order_item.product, availability=True)
                 order_restaurants.append({menu_item.restaurant for menu_item in menu_items})
-
             available_restaurants = set.intersection(*order_restaurants)
-            view_order_item['restaurants'] = available_restaurants
+            client_coordinates = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, order.address)
+            print(client_coordinates)
+
+            restaurants = []
+            # Making list of pairs of available restaurant and distance from restaurant to client
+            for restaurant in available_restaurants:
+                distance_to_client = None
+                if client_coordinates:
+                    restaurant_coordinates = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, restaurant.address)
+                    distance_to_client = distance.distance(
+                        distance.lonlat(*client_coordinates),
+                        distance.lonlat(*restaurant_coordinates)).km
+                    print(f'Distance to client {order.address} from resto {restaurant.address}: {distance_to_client}')
+                restaurants.append(
+                    {
+                        'restaurant': restaurant,
+                        'distance': distance_to_client
+                    }
+                )
+            view_order_item['restaurants'] = sorted(restaurants, key=lambda restaurant: restaurant['distance'])
             view_order_items.append(view_order_item)
         else:
             view_order_items.append(view_order_item)
-        print(order, order.restaurant)
 
     return render(request, template_name='order_items.html', context={
         'order_items': view_order_items,
