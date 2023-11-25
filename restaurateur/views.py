@@ -148,7 +148,19 @@ def view_orders(request):
             for restaurant in available_restaurants:
                 distance_to_client = None
                 if client_coordinates:
-                    restaurant_coordinates = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, restaurant.address)
+                    try:
+                        place = Place.objects.get(address=restaurant.address)
+                        restaurant_coordinates = place.latitude, place.longitude
+                    except ObjectDoesNotExist:
+                        restaurant_coordinates = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, restaurant.address)
+                        if not restaurant_coordinates:
+                            restaurant_coordinates = Decimal(0), Decimal(0)
+                        Place.objects.create(
+                            address=restaurant.address,
+                            latitude=restaurant_coordinates[0],
+                            longitude=restaurant_coordinates[1],
+                            last_request=datetime.date.today(),
+                        )
                     distance_to_client = distance.distance(
                         distance.lonlat(*client_coordinates),
                         distance.lonlat(*restaurant_coordinates)).km
