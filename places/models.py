@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import constraints, UniqueConstraint
+from decimal import Decimal
 
 
 class Place(models.Model):
@@ -12,11 +12,13 @@ class Place(models.Model):
         'долгота',
         max_digits=9,
         decimal_places=6,
+        default=Decimal(0),
     )
     latitude = models.DecimalField(
         'широта',
         max_digits=9,
         decimal_places=6,
+        default=Decimal(0),
     )
     last_request = models.DateField(
         'дата последнего запроса к геокодеру',
@@ -26,9 +28,6 @@ class Place(models.Model):
     class Meta:
         verbose_name = 'место'
         verbose_name_plural = 'места'
-        constraints = [
-            UniqueConstraint(fields=['longitude', 'latitude'], name='unique_coordinates'),
-        ]
 
     def __str__(self):
         return f'{self.address}'
