@@ -12,13 +12,11 @@ class Place(models.Model):
         'долгота',
         max_digits=9,
         decimal_places=6,
-        default=Decimal(0),
     )
     latitude = models.DecimalField(
         'широта',
         max_digits=9,
         decimal_places=6,
-        default=Decimal(0),
     )
     last_request = models.DateField(
         'дата последнего запроса к геокодеру',
