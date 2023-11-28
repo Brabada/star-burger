@@ -126,9 +126,6 @@ def view_orders(request):
                     .filter(product=order_item.product, availability=True)
                 order_restaurants.append({menu_item.restaurant for menu_item in menu_items})
             available_restaurants = set.intersection(*order_restaurants)
-            # get place by address
-            # if place not found - fetch_coordinates by address and create place with address and coords
-            # if place founded - take from place coords for eval distance
             try:
                 place = Place.objects.get(address=order.address)
                 client_coordinates = place.latitude, place.longitude
