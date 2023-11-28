@@ -142,7 +142,6 @@ class OrderQuerySet(models.QuerySet):
         return self.alias(priority_order=priority_order).order_by('priority_order', 'id')
 
 
-
 class Order(models.Model):
     firstname = models.CharField(
         'имя',
