@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.serializers import ModelSerializer
 
 from .models import Product, Order, OrderItem
+from .serializers import OrderSerializer
 
 from decimal import Decimal
 
@@ -63,21 +64,7 @@ def product_list_api(request):
     })
 
 
-class OrderItemSerializer(ModelSerializer):
-    class Meta:
-        model = OrderItem
-        fields = ['product', 'quantity']
-
-
-class OrderSerializer(ModelSerializer):
-    products = OrderItemSerializer(many=True, allow_empty=False, write_only=True)
-
-    class Meta:
-        model = Order
-        fields = ['id', 'firstname', 'lastname', 'phonenumber', 'address', 'products']
-
-
-#{"products":
+# {"products":
 # [{"product": 2, "quantity": 3}, {"product": 1, "quantity": 3}],
 # "firstname": "Максим",
 # "lastname": "Булкович",
