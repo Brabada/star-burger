@@ -259,7 +259,6 @@ class OrderItem(models.Model):
     price = models.DecimalField(
         'стоимость позиции',
         validators=[MinValueValidator(Decimal(0))],
-        default=Decimal(0),
         max_digits=9,
         decimal_places=2,
     )
