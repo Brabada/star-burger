@@ -91,14 +91,8 @@ def register_order(request):
                 'price': Decimal(fetched_product.price * product['quantity']),
             }
         )
+    order = serializer.save()
 
-    order = Order(
-        firstname=serializer.validated_data['firstname'],
-        lastname=serializer.validated_data['lastname'],
-        phonenumber=serializer.validated_data['phonenumber'],
-        address=serializer.validated_data['address'],
-    )
-    order.save()
     for product in dumped_products:
         order_item = OrderItem(
             product=product['product'],
