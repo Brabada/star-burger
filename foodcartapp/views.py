@@ -1,15 +1,21 @@
+import logging.handlers
+
 from django.http import JsonResponse
 from django.templatetags.static import static
 from django.shortcuts import get_object_or_404
 from django.db.transaction import atomic
+from django.conf import settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.serializers import ModelSerializer
 
 from .models import Product, Order, OrderItem
 from .serializers import OrderSerializer
+from places.models import Place
+from places.views import fetch_coordinates
 
 from decimal import Decimal
+import datetime
 
 
 def banners_list_api(request):
@@ -101,6 +107,20 @@ def register_order(request):
             price=product['price'],
         )
         order_item.save()
+
+    place_coordinates = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, order.address)
+    if not place_coordinates:
+        place_coordinates = Decimal(0), Decimal(0)
+
+    place, created = Place.objects.get_or_create(
+        address=order.address,
+        defaults={
+            'longitude': place_coordinates[1],
+            'latitude': place_coordinates[0],
+            'last_request': datetime.date.today(),
+        }
+    )
+    logging.DEBUG(place, f"Place was created?{created}", sep='---')
 
     # Serializing Order and return for frontend
     serializer = OrderSerializer(order)
