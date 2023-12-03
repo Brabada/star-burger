@@ -1,21 +1,16 @@
-from django import forms
-from django.shortcuts import redirect, render
-from django.views import View
-from django.urls import reverse_lazy
-from django.contrib.auth.decorators import user_passes_test
-from django.core.exceptions import ObjectDoesNotExist
+from decimal import Decimal
 
-from django.conf import settings
+from django import forms
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
-
-from decimal import Decimal
+from django.contrib.auth.decorators import user_passes_test
+from django.shortcuts import redirect, render, get_object_or_404
+from django.urls import reverse_lazy
+from django.views import View
 from geopy import distance
 
 from foodcartapp.models import Product, Restaurant, Order, RestaurantMenuItem
 from places.models import Place
-from places.views import fetch_coordinates
-import datetime
 
 
 class Login(forms.Form):
@@ -125,42 +120,26 @@ def view_orders(request):
                     .select_related('restaurant')\
                     .filter(product=order_item.product, availability=True)
                 order_restaurants.append({menu_item.restaurant for menu_item in menu_items})
+
             available_restaurants = set.intersection(*order_restaurants)
-            try:
-                place = Place.objects.get(address=order.address)
-                client_coordinates = place.latitude, place.longitude
-            except ObjectDoesNotExist:
-                client_coordinates = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, order.address)
-                if not client_coordinates:
-                    client_coordinates = Decimal(0), Decimal(0)
-                Place.objects.create(
-                    address=order.address,
-                    latitude=client_coordinates[0],
-                    longitude=client_coordinates[1],
-                    last_request=datetime.date.today(),
-                )
+            client_coordinates = get_object_or_404(
+                Place.objects.values('longitude', 'latitude'),
+                address=order.address
+            )
 
             restaurants = []
             # Making list of pairs of available restaurant and distance from restaurant to client
             for restaurant in available_restaurants:
                 distance_to_client = None
                 if client_coordinates:
-                    try:
-                        place = Place.objects.get(address=restaurant.address)
-                        restaurant_coordinates = place.latitude, place.longitude
-                    except ObjectDoesNotExist:
-                        restaurant_coordinates = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, restaurant.address)
-                        if not restaurant_coordinates:
-                            restaurant_coordinates = Decimal(0), Decimal(0)
-                        Place.objects.create(
-                            address=restaurant.address,
-                            latitude=restaurant_coordinates[0],
-                            longitude=restaurant_coordinates[1],
-                            last_request=datetime.date.today(),
-                        )
+                    restaurant_coordinates = get_object_or_404(
+                        Place.objects.values('longitude', 'latitude'),
+                        address=restaurant.address,
+                    )
                     distance_to_client = distance.distance(
-                        distance.lonlat(*client_coordinates),
-                        distance.lonlat(*restaurant_coordinates)).km
+                        (client_coordinates['longitude'], client_coordinates['latitude']),
+                        (restaurant_coordinates['longitude'], restaurant_coordinates['latitude'])
+                    ).km
                     print(f'Distance to client {order.address} from resto {restaurant.address}: {distance_to_client}')
                     if distance_to_client:
                         distance_to_client = round(Decimal(distance_to_client), 3)

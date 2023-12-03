@@ -1,21 +1,19 @@
+import datetime
 import logging.handlers
+from decimal import Decimal
 
-from django.http import JsonResponse
-from django.templatetags.static import static
-from django.shortcuts import get_object_or_404
-from django.db.transaction import atomic
 from django.conf import settings
+from django.db.transaction import atomic
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.templatetags.static import static
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework.serializers import ModelSerializer
 
-from .models import Product, Order, OrderItem
-from .serializers import OrderSerializer
 from places.models import Place
-from places.views import fetch_coordinates
-
-from decimal import Decimal
-import datetime
+from places.views import fetch_coordinates, create_restaurant_places_if_not_exists
+from .models import Product, OrderItem
+from .serializers import OrderSerializer
 
 
 def banners_list_api(request):
@@ -121,6 +119,8 @@ def register_order(request):
         }
     )
     logging.DEBUG(place, f"Place was created?{created}", sep='---')
+
+    create_restaurant_places_if_not_exists()
 
     # Serializing Order and return for frontend
     serializer = OrderSerializer(order)
