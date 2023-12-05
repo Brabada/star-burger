@@ -1,15 +1,17 @@
+import logging
 from decimal import Decimal
 
 from django import forms
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import user_passes_test
-from django.shortcuts import redirect, render, get_object_or_404
+from django.db.models import Prefetch
+from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.views import View
 from geopy import distance
 
-from foodcartapp.models import Product, Restaurant, Order, RestaurantMenuItem
+from foodcartapp.models import Product, Restaurant, RestaurantMenuItem, Order, OrderItem
 from places.models import Place
 
 
@@ -95,15 +97,19 @@ def view_restaurants(request):
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
 
+    queryset_order_item = OrderItem.objects.select_related('product')
+    prefetched_order_items = Prefetch('order_items', queryset=queryset_order_item)
     orders = Order.info.total_price()\
-        .prefetch_related('order_items__product__menu_items__restaurant')\
+        .select_related('restaurant')\
+        .prefetch_related(
+            prefetched_order_items,)\
         .order_by_priority()\
         .exclude(status=Order.DONE)
 
-    # 1. Order->order_items->all OrderItems for Order
-    # 2. for OrderItem->by product-> gets all RestaurantMenuItem(with availability=True)
-    # 3. RestaurantMenuItem -> Restaurants -> saving Restaurants for each OrderItem
-    # 4. Gets intersection between restaurants sets from OrderItems in Order and saving restaurants if have any
+    all_restaurants = Restaurant.objects.prefetch_related(
+                Prefetch('menu_items', RestaurantMenuItem.objects.select_related('product').filter(availability=True)))
+
+    places = Place.objects.values('address', 'longitude', 'latitude').order_by('address')
 
     view_order_items = []
     for order in orders:
@@ -111,42 +117,49 @@ def view_orders(request):
             'order_item': order,
         }
 
-        # only for order without selected restaurant
+        # if order not designated to restaurant
         if not order.restaurant:
-            order_items = order.order_items.all()
-            order_restaurants = []
-            for order_item in order_items:
-                menu_items = RestaurantMenuItem.objects\
-                    .select_related('restaurant')\
-                    .filter(product=order_item.product, availability=True)
-                order_restaurants.append({menu_item.restaurant for menu_item in menu_items})
+            order_products = set()
+            for order_item in order.order_items.all():
+                order_products.add(order_item.product)
 
-            available_restaurants = set.intersection(*order_restaurants)
-            client_coordinates = get_object_or_404(
-                Place.objects.values('longitude', 'latitude'),
-                address=order.address
-            )
+            # comparing products set with restaurants available products
+            available_restaurants = []
+            for restaurant in all_restaurants:
+                restaurant_products = set()
+                for menu_item in restaurant.menu_items.all():
+                    restaurant_products.add(menu_item.product)
+                if order_products.issubset(restaurant_products):
+                    available_restaurants.append(restaurant)
 
+            # evaluate distance between client and available restaurants
             restaurants = []
+            client_coordinates = next(
+                (coords['longitude'], coords['latitude']) for coords in places if coords['address'] == order.address
+            )
             # Making list of pairs of available restaurant and distance from restaurant to client
             for restaurant in available_restaurants:
-                distance_to_client = None
-                if client_coordinates:
-                    restaurant_coordinates = get_object_or_404(
-                        Place.objects.values('longitude', 'latitude'),
-                        address=restaurant.address,
+                distance_to_restaurant = None
+                if client_coordinates[0] != Decimal(0) and client_coordinates[1] != Decimal(0):
+                    restaurant_coordinates = next(
+                        (coords['longitude'], coords['latitude'])
+                        for coords in places if coords['address'] == restaurant.address
                     )
-                    distance_to_client = distance.distance(
-                        (client_coordinates['longitude'], client_coordinates['latitude']),
-                        (restaurant_coordinates['longitude'], restaurant_coordinates['latitude'])
+
+                    distance_to_restaurant = distance.distance(
+                        (client_coordinates[0], client_coordinates[1]),
+                        (restaurant_coordinates[0], restaurant_coordinates[1])
                     ).km
-                    print(f'Distance to client {order.address} from resto {restaurant.address}: {distance_to_client}')
-                    if distance_to_client:
-                        distance_to_client = round(Decimal(distance_to_client), 3)
+
+                    logging.debug(
+                        f'Distance to client {order.address} from resto {restaurant.address}: {distance_to_restaurant}')
+
+                    if distance_to_restaurant:
+                        distance_to_restaurant = round(Decimal(distance_to_restaurant), 3)
                 restaurants.append(
                     {
                         'restaurant': restaurant,
-                        'distance': distance_to_client
+                        'distance': distance_to_restaurant
                     }
                 )
             view_order_item['restaurants'] = sorted(restaurants, key=lambda restaurant: restaurant['distance'])
