@@ -5,14 +5,13 @@ from decimal import Decimal
 from django.conf import settings
 from django.db.transaction import atomic
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
 from django.templatetags.static import static
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from places.models import Place
 from places.views import fetch_coordinates, create_restaurant_places_if_not_exists
-from .models import Product, OrderItem
+from .models import Product
 from .serializers import OrderSerializer
 
 
@@ -83,28 +82,7 @@ def register_order(request):
     # Deserializing order form
     serializer = OrderSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    dumped_products = []
-    for product in serializer.validated_data['products']:
-        product_id = product['product'].id
-        fetched_product = get_object_or_404(Product, id=product_id)
-
-        dumped_products.append(
-            {
-                'product': fetched_product,
-                'quantity': product['quantity'],
-                'price': Decimal(fetched_product.price * product['quantity']),
-            }
-        )
     order = serializer.save()
-
-    for product in dumped_products:
-        order_item = OrderItem(
-            product=product['product'],
-            quantity=product['quantity'],
-            order=order,
-            price=product['price'],
-        )
-        order_item.save()
 
     place_coordinates = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, order.address)
     if not place_coordinates:
@@ -118,7 +96,7 @@ def register_order(request):
             'last_request': datetime.date.today(),
         }
     )
-    logging.DEBUG(place, f"Place was created?{created}", sep='---')
+    logging.DEBUG(f"Place {place} was created?{created}")
 
     create_restaurant_places_if_not_exists()
 
