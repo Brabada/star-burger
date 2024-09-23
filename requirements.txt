@@ -8,3 +8,5 @@ djangorestframework==3.14.*
 markdown==3.5
 requests==2.*
 geopy==2.4.*
+gunicorn==22.0.*
+rollbar==1.0.*
