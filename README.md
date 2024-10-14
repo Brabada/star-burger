@@ -62,7 +62,12 @@ SECRET_KEY=django-insecure-0if40nf4nf93n4
 Получите токен геокодера от Яндекса для переменной окружения `YANDEX_GEOCODER_API_KEY`. Добавьте эту переменную и токен
 в `.env`.
 
-Создайте файл базы данных SQLite и отмигрируйте её следующей командой:
+Задайте переменную окружения `DB_CONFIG_URL` для конфигурации БД. Схему URL для различных БД есть здесь: https://github.com/jazzband/dj-database-url#url-schema.
+```shell
+DB_CONFIG_URL=postgres://USER:PASSWORD@HOST:PORT/NAME
+```
+
+Создайте файл базы данных и отмигрируйте её следующей командой:
 
 ```sh
 python manage.py migrate
